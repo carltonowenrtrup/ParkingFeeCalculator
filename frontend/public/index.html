@@ -1,0 +1,1095 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Secure Parking Estimator</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Source+Code+Pro:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+      /* Redesigned: Shifted to a blue-purple theme, changed fonts, adjusted layout for distinction */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      :root {
+        --bg-primary: #0c0e1a;
+        --bg-secondary: #1a1c2e;
+        --bg-tertiary: #16213e;
+        --accent-purple: #8b5cf6;
+        --accent-blue: #3b82f6;
+        --text-primary: #f8fafc;
+        --text-secondary: #cbd5e1;
+        --text-muted: #94a3b8;
+        --border-primary: rgba(255, 255, 255, 0.1);
+        --border-accent: rgba(139, 92, 246, 0.3);
+        --glass-bg: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.5);
+        --shadow-lg: 0 20px 80px rgba(0, 0, 0, 0.6);
+        --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+        --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+        --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        --gradient-metamask: linear-gradient(135deg, #f6851b 0%, #e2761b 100%);
+        --gradient-park: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+      body {
+        min-height: 100vh;
+        font-family:
+          "Roboto",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background:
+          radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+          radial-gradient(circle at 90% 90%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+          linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        color: var(--text-primary);
+        line-height: 1.6;
+        overflow-x: hidden;
+      }
+      /* Redesigned topbar with different padding and border */
+      .topbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 3rem;
+        background: rgba(12, 14, 26, 0.9);
+        backdrop-filter: blur(25px) saturate(200%);
+        border-bottom: 1px solid var(--border-primary);
+        box-shadow: var(--shadow-sm);
+      }
+      .topbar::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        width: 0%;
+        background: var(--gradient-purple);
+        transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      .topbar.connected::after {
+        width: 100%;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+      }
+      .logo img {
+        height: 36px;
+        filter: brightness(1.2);
+      }
+      /* MetaMask button with adjusted styles */
+      #connect {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem 1.75rem;
+        background: var(--gradient-metamask);
+        border: 1px solid rgba(246, 133, 27, 0.4);
+        border-radius: 16px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+      }
+      #connect::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
+        opacity: 0;
+        transition: opacity 0.4s ease;
+      }
+      #connect:hover::before {
+        opacity: 1;
+      }
+      #connect:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+        border-color: rgba(246, 133, 27, 0.6);
+      }
+      #connect:focus {
+        outline: 2px solid var(--accent-purple);
+        outline-offset: 2px;
+      }
+      #connect:disabled {
+        opacity: 0.8;
+        cursor: not-allowed;
+        transform: none;
+      }
+      #connect img {
+        width: 22px;
+        height: 22px;
+      }
+      /* Main content with adjusted spacing */
+      main {
+        padding-top: 7rem;
+        padding-bottom: 5rem;
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4rem;
+      }
+      /* Hero section with updated gradients */
+      .hero {
+        text-align: center;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      .hero h1 {
+        font-size: clamp(2.75rem, 6vw, 4.5rem);
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        margin-bottom: 1.25rem;
+        background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-purple) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .hero p {
+        font-size: 1.375rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.75rem;
+      }
+      .hero .subtitle {
+        font-size: 1rem;
+        color: var(--text-muted);
+        font-family: "Source Code Pro", monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+      }
+      /* Cards: Updated to vertical stack on mobile, different gap */
+      .app {
+        width: 100%;
+        max-width: 1100px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        perspective: 1400px;
+      }
+      @media (max-width: 900px) {
+        .app {
+          grid-template-columns: 1fr;
+          max-width: 600px;
+        }
+      }
+      .card {
+        position: relative;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 28px;
+        padding: 3rem;
+        backdrop-filter: blur(25px) saturate(200%);
+        box-shadow: var(--shadow-md);
+        transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        transform-style: preserve-3d;
+        overflow: hidden;
+      }
+      .card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--accent-purple), transparent);
+        opacity: 0.7;
+      }
+      .card:hover {
+        border-color: var(--border-accent);
+        box-shadow:
+          var(--shadow-lg),
+          0 0 0 1px rgba(139, 92, 246, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+      .card h2 {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-size: 1.375rem;
+        font-weight: 700;
+        color: var(--accent-purple);
+        margin-bottom: 2rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .card h2 i {
+        font-size: 1.25rem;
+      }
+      /* Note with updated background */
+      .note {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+        padding: 1rem 1.25rem;
+        background: rgba(139, 92, 246, 0.08);
+        border: 1px solid rgba(139, 92, 246, 0.15);
+        border-radius: 12px;
+        font-family: "Source Code Pro", monospace;
+      }
+      .inputs {
+        display: flex;
+        gap: 1.25rem;
+        margin-bottom: 2rem;
+      }
+      @media (max-width: 600px) {
+        .inputs {
+          flex-direction: column;
+        }
+      }
+      .input-wrapper {
+        flex: 1;
+      }
+      label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin-bottom: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+      }
+      input[type="number"],
+      input[type="text"] {
+        width: 100%;
+        padding: 1.25rem 1.5rem;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--border-primary);
+        border-radius: 16px;
+        color: var(--text-primary);
+        font-size: 1.125rem;
+        font-family: "Source Code Pro", monospace;
+        text-align: center;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      input:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+        box-shadow:
+          0 0 0 4px rgba(59, 130, 246, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        background: rgba(0, 0, 0, 0.5);
+      }
+      input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      /* Buttons with updated radii and shadows */
+      .btn {
+        position: relative;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 1.25rem 1.75rem;
+        border: none;
+        border-radius: 16px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        overflow: hidden;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .btn::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
+        opacity: 0;
+        transition: opacity 0.4s ease;
+      }
+      .btn:hover::before {
+        opacity: 1;
+      }
+      .btn:focus {
+        outline: 2px solid var(--accent-purple);
+        outline-offset: 2px;
+      }
+      .btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .btn-primary {
+        background: var(--gradient-purple);
+        color: var(--bg-primary);
+        box-shadow: var(--shadow-sm);
+      }
+      .btn-primary:hover:not(:disabled) {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+      }
+      .btn-secondary {
+        background: var(--gradient-park);
+        color: white;
+        box-shadow: var(--shadow-sm);
+      }
+      .btn-secondary:hover:not(:disabled) {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+      }
+      .btn-success {
+        background: var(--gradient-success);
+        color: white;
+        box-shadow: var(--shadow-sm);
+      }
+      .btn-success:hover:not(:disabled) {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+      }
+      .btn i {
+        font-size: 1.125rem;
+      }
+      /* Status with updated padding */
+      .status {
+        width: 100%;
+        max-width: 1100px;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      #status,
+      #result,
+      #feeResult {
+        padding: 1.75rem 2.5rem;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        backdrop-filter: blur(25px) saturate(200%);
+        min-height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        text-align: center;
+        font-family: "Source Code Pro", monospace;
+        font-size: 0.95rem;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      /* Animations with adjusted timing */
+      .loading::after {
+        content: "";
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        border-top-color: var(--accent-purple);
+        border-radius: 50%;
+        margin-left: 15px;
+        animation: spin 1.2s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .encrypt-animation {
+        position: relative;
+        overflow: hidden;
+      }
+      .encrypt-animation::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(59, 130, 246, 0.15) 20%,
+          rgba(59, 130, 246, 0.35) 50%,
+          rgba(59, 130, 246, 0.15) 80%,
+          transparent 100%
+        );
+        animation: scan 2.5s ease-in-out infinite;
+        border-radius: 16px;
+      }
+      @keyframes scan {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+      .success-flash {
+        animation: flash 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      @keyframes flash {
+        0%,
+        100% {
+          box-shadow: var(--shadow-sm);
+          border-color: var(--glass-border);
+        }
+        50% {
+          box-shadow:
+            var(--shadow-md),
+            0 0 0 3px rgba(16, 185, 129, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
+          border-color: rgba(16, 185, 129, 0.6);
+        }
+      }
+      .card {
+        will-change: transform;
+      }
+      .card:hover {
+        transform: translateZ(25px);
+      }
+      @media (max-width: 600px) {
+        .topbar {
+          padding: 1.25rem 1.5rem;
+        }
+        .logo {
+          font-size: 1.125rem;
+        }
+        #connect {
+          padding: 0.75rem 1.25rem;
+          font-size: 0.875rem;
+        }
+        .card {
+          padding: 2.5rem;
+        }
+        main {
+          padding-top: 6rem;
+          gap: 3rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Top bar -->
+    <nav class="topbar" id="topbar">
+      <div class="logo">
+        <img
+          src="https://raw.githubusercontent.com/zama-ai/fhevm/main/docs/.gitbook/assets/fhevm-dark.png"
+          alt="Zama FHE"
+        />
+        Secure Parking Estimator
+      </div>
+      <button id="connect" title="Connect MetaMask">
+        <img
+          src="https://raw.githubusercontent.com/MetaMask/metamask-extension/master/app/images/logo/metamask-fox.svg"
+          alt="MetaMask"
+        />
+        <span>Connect</span>
+      </button>
+    </nav>
+    <main>
+      <!-- Hero section -->
+      <section class="hero">
+        <h1><i class="fa-solid fa-parking"></i> Private Parking Fee</h1>
+        <p>Encrypted duration calculation with Zama FHE</p>
+        <div class="subtitle">Fully Homomorphic Encryption • Rounds Up to 30min Blocks • User-Only Reveal</div>
+      </section>
+      <!-- App cards -->
+      <section class="app">
+        <!-- Calculate Fee Card -->
+        <div class="card" id="calcCard">
+          <h2><i class="fa-solid fa-car"></i> Calculate Fee</h2>
+          <div class="note">Enter parking minutes • Fee in cents, rounded up per 30min block</div>
+          <div class="inputs">
+            <div class="input-wrapper">
+              <label for="minutes">Parking Minutes</label>
+              <input id="minutes" type="number" min="0" placeholder="0" disabled />
+            </div>
+          </div>
+          <button id="calculateFee" class="btn btn-secondary" disabled>
+            <i class="fa-solid fa-calculator"></i> Calculate Fee
+          </button>
+        </div>
+        <!-- Manage & View Card -->
+        <div class="card" id="manageCard">
+          <h2><i class="fa-solid fa-cog"></i> Manage & View</h2>
+          <div class="note">Owner: Adjust tariff • All: Decrypt your private fee</div>
+          <div id="manageSection">
+            <div class="inputs">
+              <div class="input-wrapper">
+                <label for="priceInput">Price Per Block (cents)</label>
+                <input id="priceInput" type="number" min="1" placeholder="10" disabled />
+              </div>
+              <div class="input-wrapper">
+                <label for="maxBlocksInput">Max Blocks</label>
+                <input id="maxBlocksInput" type="number" min="1" placeholder="96" disabled />
+              </div>
+            </div>
+            <div class="inputs">
+              <div class="input-wrapper">
+                <button id="setPrice" class="btn btn-primary" disabled>
+                  <i class="fa-solid fa-dollar-sign"></i> Set Price
+                </button>
+              </div>
+              <div class="input-wrapper">
+                <button id="setMaxBlocks" class="btn btn-primary" disabled>
+                  <i class="fa-solid fa-clock"></i> Set Max Blocks
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="inputs">
+            <div class="input-wrapper">
+              <label for="feeHandleInput">Fee Handle</label>
+              <input id="feeHandleInput" type="text" placeholder="0x..." disabled />
+            </div>
+            <div class="input-wrapper">
+              <label>&nbsp;</label>
+              <button id="getLastFeeHandle" class="btn btn-primary" disabled>
+                <i class="fa-solid fa-history"></i> Get Last Handle
+              </button>
+            </div>
+          </div>
+          <button id="decryptFee" class="btn btn-success" disabled>
+            <i class="fa-solid fa-lock-open"></i> Decrypt Fee
+          </button>
+          <div id="feeResult" aria-live="polite"></div>
+        </div>
+      </section>
+      <!-- Status -->
+      <section class="status">
+        <div id="status" aria-live="polite">Waiting for MetaMask connection...</div>
+        <div id="result" aria-live="polite"></div>
+      </section>
+    </main>
+    <script type="module" crossorigin src="https://cdn.zama.ai/relayer-sdk-js/0.1.2/relayer-sdk-js.js"></script>
+    <script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm"></script>
+    <script type="module">
+      import { BrowserProvider, Contract } from "https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm";
+      import {
+        initSDK,
+        createInstance,
+        SepoliaConfig,
+        generateKeypair,
+      } from "https://cdn.zama.ai/relayer-sdk-js/0.1.2/relayer-sdk-js.js";
+      const $ = (id) => document.getElementById(id);
+      const [
+        connectBtn,
+        calculateFeeBtn,
+        setPriceBtn,
+        setMaxBlocksBtn,
+        getLastFeeHandleBtn,
+        decryptFeeBtn,
+        minutesInput,
+        priceInput,
+        maxBlocksInput,
+        feeHandleInput,
+        status,
+        result,
+        feeResult,
+        manageSection,
+      ] = [
+        "connect",
+        "calculateFee",
+        "setPrice",
+        "setMaxBlocks",
+        "getLastFeeHandle",
+        "decryptFee",
+        "minutes",
+        "priceInput",
+        "maxBlocksInput",
+        "feeHandleInput",
+        "status",
+        "result",
+        "feeResult",
+        "manageSection",
+      ].map($);
+      // Card tilt effect
+      document.querySelectorAll(".card").forEach((card) => {
+        card.addEventListener("mousemove", (e) => {
+          const rect = card.getBoundingClientRect();
+          const x = (e.clientX - rect.left) / rect.width - 0.5;
+          const y = (e.clientY - rect.top) / rect.height - 0.5;
+          const rotateY = x * 6;
+          const rotateX = -y * 6;
+          card.style.transform = `perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(20px)`;
+        });
+        card.addEventListener("mouseleave", () => {
+          card.style.transform = "";
+        });
+      });
+      const CONTRACT_ADDRESS = "0x5A35A14D4C0f09887E26beFec6fa673E8ad4cc45";
+      const KMS_ADDRESS = "0x1364cBBf2cDF5032C47d8226a6f6FBD2AFCDacAC";
+      const RELAYER_URL = "https://relayer.testnet.zama.cloud";
+      const parkingAbi = [
+        {
+          inputs: [],
+          name: "version",
+          outputs: [{ name: "", type: "string" }],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            { name: "minutesExt", type: "bytes32" },
+            { name: "proof", type: "bytes" },
+          ],
+          name: "quote",
+          outputs: [{ name: "feeHandle", type: "bytes32" }],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "getMyFeeHandle",
+          outputs: [{ name: "", type: "bytes32" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [{ name: "newPrice", type: "uint64" }],
+          name: "setPricePerBlock",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [{ name: "newMax", type: "uint16" }],
+          name: "setMaxBlocks",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "pricePerBlock",
+          outputs: [{ name: "", type: "uint64" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "maxBlocks",
+          outputs: [{ name: "", type: "uint16" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "owner",
+          outputs: [{ name: "", type: "address" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            { indexed: true, name: "user", type: "address" },
+            { indexed: false, name: "feeHandle", type: "bytes32" },
+          ],
+          name: "Quoted",
+          type: "event",
+        },
+      ];
+      let provider, signer, user, relayer, contract, currentPrice, currentMaxBlocks, isOwner;
+      let step = 0;
+      function log(msg) {
+        console.log(`[${++step}] ${msg}`);
+      }
+      function addLoadingAnimation(btn) {
+        btn.classList.add("loading");
+      }
+      function removeLoadingAnimation(btn) {
+        btn.classList.remove("loading");
+      }
+      function addEncryptionAnimation(element) {
+        element.classList.add("encrypt-animation");
+        setTimeout(() => element.classList.remove("encrypt-animation"), 3000);
+      }
+      function addSuccessFlash(element) {
+        element.classList.add("success-flash");
+        setTimeout(() => element.classList.remove("success-flash"), 500);
+      }
+      async function updateStatus() {
+        if (!contract) return;
+        try {
+          currentPrice = await contract.pricePerBlock();
+          currentMaxBlocks = await contract.maxBlocks();
+          result.textContent = `Price: ${currentPrice.toString()} cents/block | Max Blocks: ${currentMaxBlocks.toString()} (up to ${(currentMaxBlocks * 30n).toString()} min)`;
+          if (isOwner) {
+            priceInput.value = currentPrice.toString();
+            maxBlocksInput.value = currentMaxBlocks.toString();
+          }
+        } catch (e) {
+          log(`Status update error: ${e.message}`);
+        }
+      }
+      async function connectMetaMask() {
+        addLoadingAnimation(connectBtn);
+        log("Checking window.ethereum...");
+        if (!window.ethereum || typeof window.ethereum.request !== "function") {
+          status.textContent = "❌ MetaMask is not installed or does not support EIP-1193";
+          log("MetaMask not found or does not support EIP-1193");
+          removeLoadingAnimation(connectBtn);
+          return false;
+        }
+        try {
+          provider = new BrowserProvider(window.ethereum);
+          await provider.send("eth_requestAccounts", []);
+          signer = await provider.getSigner();
+          user = await signer.getAddress();
+          let network = await provider.getNetwork();
+          if (network.chainId !== BigInt(11155111)) {
+            status.textContent = "⏳ Switching to Sepolia network...";
+            log(`Incorrect network: ${network.chainId}. Requesting Sepolia (11155111)`);
+            try {
+              await provider.send("wallet_switchEthereumChain", [{ chainId: "0xaa36a7" }]);
+              network = await provider.getNetwork();
+            } catch (switchError) {
+              if (switchError.code === 4902) {
+                try {
+                  await provider.send("wallet_addEthereumChain", [
+                    {
+                      chainId: "0xaa36a7",
+                      chainName: "Sepolia",
+                      nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
+                      rpcUrls: ["https://rpc.sepolia.org"],
+                      blockExplorerUrls: ["https://sepolia.etherscan.io"],
+                    },
+                  ]);
+                  network = await provider.getNetwork();
+                } catch (addError) {
+                  status.textContent = "❌ Unable to add Sepolia network";
+                  log(`Add network error: ${addError.message}`);
+                  removeLoadingAnimation(connectBtn);
+                  return false;
+                }
+              } else {
+                status.textContent = "❌ Please switch to Sepolia network";
+                log(`Network switch error: ${switchError.message}`);
+                removeLoadingAnimation(connectBtn);
+                return false;
+              }
+            }
+            if (network.chainId !== BigInt(11155111)) {
+              status.textContent = "❌ Please switch to Sepolia network";
+              log(`Failed to switch network: ${network.chainId}`);
+              removeLoadingAnimation(connectBtn);
+              return false;
+            }
+          }
+          status.textContent = `✅ Connected: ${user.slice(0, 6)}...${user.slice(-4)}`;
+          log(`Connected account: ${user}`);
+          connectBtn.innerHTML = `<img src="https://raw.githubusercontent.com/MetaMask/metamask-extension/master/app/images/logo/metamask-fox.svg" alt="MetaMask"><span>${user.slice(0, 6)}...${user.slice(-4)}</span>`;
+          connectBtn.disabled = true;
+          document.getElementById("topbar").classList.add("connected");
+          // Enable inputs
+          minutesInput.disabled = false;
+          priceInput.disabled = false;
+          maxBlocksInput.disabled = false;
+          feeHandleInput.disabled = false;
+          calculateFeeBtn.disabled = false;
+          getLastFeeHandleBtn.disabled = false;
+          decryptFeeBtn.disabled = false;
+          addSuccessFlash(status);
+          log("Initializing Relayer SDK...");
+          await initSDK();
+          log("Relayer SDK initialized");
+          const relayerConfig = {
+            ...SepoliaConfig,
+            network: window.ethereum,
+            relayerUrl: RELAYER_URL,
+            user: {
+              publicKey:
+                "0x" +
+                new Uint8Array(32)
+                  .fill(0)
+                  .map((b) => b.toString(16).padStart(2, "0"))
+                  .join(""),
+              privateKey:
+                "0x" +
+                new Uint8Array(32)
+                  .fill(0)
+                  .map((b) => b.toString(16).padStart(2, "0"))
+                  .join(""),
+            },
+            debug: true,
+          };
+          const code = await provider.getCode(KMS_ADDRESS);
+          if (code === "0x") {
+            throw new Error(`KMS contract not found at address: ${KMS_ADDRESS}`);
+          }
+          log(`KMS contract exists: ${KMS_ADDRESS}, code length: ${code.length} bytes`);
+          log("Creating relayer...");
+          relayer = await createInstance(relayerConfig);
+          log("Relayer ready");
+          log("Creating contract instance...");
+          contract = new Contract(CONTRACT_ADDRESS, parkingAbi, signer);
+          log(`Contract initialized: ${CONTRACT_ADDRESS}`);
+          const version = await contract.version();
+          log(`Contract version: ${version}`);
+          // Check owner
+          try {
+            const owner = await contract.owner();
+            isOwner = owner.toLowerCase() === user.toLowerCase();
+            setPriceBtn.disabled = !isOwner;
+            setMaxBlocksBtn.disabled = !isOwner;
+            if (!isOwner) {
+              manageSection.style.display = "none"; // Hide manage for non-owners
+            }
+          } catch (err) {
+            log(`Failed to fetch owner: ${err.message}`);
+          }
+          await updateStatus();
+          removeLoadingAnimation(connectBtn);
+          return true;
+        } catch (e) {
+          status.textContent = `❌ Connection error: ${e.message}`;
+          log(`Connection error: ${e.message}`);
+          removeLoadingAnimation(connectBtn);
+          return false;
+        }
+      }
+      window.addEventListener("load", () => {
+        log("Page loaded, attaching handler to MetaMask button");
+        connectBtn.onclick = connectMetaMask;
+      });
+      // Calculate Fee
+      calculateFeeBtn.onclick = async () => {
+        if (!relayer || !contract) {
+          status.textContent = "❌ Connect MetaMask first";
+          log("MetaMask not connected");
+          return;
+        }
+        const minutes = BigInt(minutesInput.value || 0);
+        const maxUint64 = BigInt("18446744073709551615");
+        if (minutes < 0n || minutes > maxUint64) {
+          status.textContent = "❌ Minutes must be non-negative and less than 2^64";
+          log(`Invalid minutes: ${minutes}`);
+          return;
+        }
+        calculateFeeBtn.disabled = true;
+        addLoadingAnimation(calculateFeeBtn);
+        addEncryptionAnimation(minutesInput);
+        status.textContent = "⏳ Calculating fee...";
+        try {
+          log(`Minutes: ${minutes}`);
+          const buf = relayer.createEncryptedInput(CONTRACT_ADDRESS, user);
+          buf.add64(minutes);
+          const { handles, inputProof } = await buf.encrypt();
+          const hMinutes = handles[0];
+          const proof = inputProof;
+          log(`hMinutes: ${String(hMinutes)}`);
+          log(`proof(bytes): ${proof.length}`);
+          await contract.quote.staticCall(hMinutes, proof);
+          log("Static call passed");
+          const tx = await contract.quote(hMinutes, proof);
+          log(`txHash: ${tx.hash}`);
+          const receipt = await tx.wait();
+          const topic = contract.interface.getEvent("Quoted").topicHash;
+          const eventLog = receipt.logs.find((l) => l.topics[0] === topic);
+          if (eventLog) {
+            const parsed = contract.interface.parseLog(eventLog);
+            const feeHandle = parsed.args.feeHandle;
+            feeHandleInput.value = feeHandle;
+            log(`feeHandle: ${feeHandle}`);
+          } else {
+            throw new Error("Quoted event not found");
+          }
+          status.textContent = "✅ Fee calculated";
+          result.textContent = `🎉 Fee Handle: ${feeHandleInput.value} (tx: ${tx.hash})`;
+          addSuccessFlash(result);
+        } catch (e) {
+          status.textContent = `❌ Error: ${e.message}`;
+          log(`Calculate error: ${e.message}`);
+        } finally {
+          calculateFeeBtn.disabled = false;
+          removeLoadingAnimation(calculateFeeBtn);
+          await updateStatus();
+        }
+      };
+      // Set Price
+      setPriceBtn.onclick = async () => {
+        if (!contract) {
+          status.textContent = "❌ Connect MetaMask first";
+          log("MetaMask not connected");
+          return;
+        }
+        const newPrice = BigInt(priceInput.value || 0);
+        if (newPrice <= 0n) {
+          status.textContent = "❌ Price must be > 0";
+          return;
+        }
+        setPriceBtn.disabled = true;
+        addLoadingAnimation(setPriceBtn);
+        status.textContent = "⏳ Setting price...";
+        try {
+          const tx = await contract.setPricePerBlock(newPrice);
+          log(`setPrice tx: ${tx.hash}`);
+          await tx.wait();
+          status.textContent = "✅ Price set";
+          addSuccessFlash(status);
+          await updateStatus();
+        } catch (e) {
+          status.textContent = `❌ Error: ${e.message}`;
+          log(`Set price error: ${e.message}`);
+        } finally {
+          setPriceBtn.disabled = false;
+          removeLoadingAnimation(setPriceBtn);
+        }
+      };
+      // Set Max Blocks
+      setMaxBlocksBtn.onclick = async () => {
+        if (!contract) {
+          status.textContent = "❌ Connect MetaMask first";
+          log("MetaMask not connected");
+          return;
+        }
+        const newMax = BigInt(maxBlocksInput.value || 0);
+        if (newMax <= 0n) {
+          status.textContent = "❌ Max blocks must be > 0";
+          return;
+        }
+        setMaxBlocksBtn.disabled = true;
+        addLoadingAnimation(setMaxBlocksBtn);
+        status.textContent = "⏳ Setting max blocks...";
+        try {
+          const tx = await contract.setMaxBlocks(newMax);
+          log(`setMaxBlocks tx: ${tx.hash}`);
+          await tx.wait();
+          status.textContent = "✅ Max blocks set";
+          addSuccessFlash(status);
+          await updateStatus();
+        } catch (e) {
+          status.textContent = `❌ Error: ${e.message}`;
+          log(`Set max blocks error: ${e.message}`);
+        } finally {
+          setMaxBlocksBtn.disabled = false;
+          removeLoadingAnimation(setMaxBlocksBtn);
+        }
+      };
+      // Get Last Fee Handle
+      getLastFeeHandleBtn.onclick = async () => {
+        if (!contract) {
+          status.textContent = "❌ Connect MetaMask first";
+          log("MetaMask not connected");
+          return;
+        }
+        getLastFeeHandleBtn.disabled = true;
+        addLoadingAnimation(getLastFeeHandleBtn);
+        status.textContent = "⏳ Fetching last fee handle...";
+        try {
+          const feeHandle = await contract.getMyFeeHandle();
+          log(`Last feeHandle: ${feeHandle}`);
+          if (feeHandle === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+            status.textContent = "❌ No fee calculated yet";
+            log("No fee handle");
+          } else {
+            feeHandleInput.value = feeHandle;
+            status.textContent = "✅ Last fee handle fetched";
+            result.textContent = `🎉 Last Fee Handle: ${feeHandle}`;
+            addSuccessFlash(result);
+          }
+        } catch (e) {
+          status.textContent = `❌ Error: ${e.message}`;
+          log(`Error fetching fee handle: ${e.message}`);
+        } finally {
+          getLastFeeHandleBtn.disabled = false;
+          removeLoadingAnimation(getLastFeeHandleBtn);
+        }
+      };
+      // Decrypt Fee
+      decryptFeeBtn.onclick = async () => {
+        if (!relayer || !contract) {
+          status.textContent = "❌ Connect MetaMask first";
+          log("MetaMask not connected");
+          return;
+        }
+        const feeHandle = feeHandleInput.value.trim();
+        if (!feeHandle || !/^0x[a-fA-F0-9]{64}$/.test(feeHandle)) {
+          status.textContent = "❌ Invalid Fee Handle";
+          log(`Invalid feeHandle: ${feeHandle}`);
+          return;
+        }
+        decryptFeeBtn.disabled = true;
+        addLoadingAnimation(decryptFeeBtn);
+        status.textContent = "⏳ Decrypting fee...";
+        try {
+          log(`Decrypting fee handle: ${feeHandle}`);
+          const kp = await generateKeypair();
+          const startTs = Math.floor(Date.now() / 1000).toString();
+          const days = "7";
+          const eip712 = relayer.createEIP712(kp.publicKey, [CONTRACT_ADDRESS], startTs, days);
+          log("Creating EIP-712 signature...");
+          const sig = await signer.signTypedData(
+            eip712.domain,
+            { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
+            eip712.message,
+          );
+          log("Signature created");
+          const pairs = [{ handle: feeHandle, contractAddress: CONTRACT_ADDRESS }];
+          const out = await relayer.userDecrypt(
+            pairs,
+            kp.privateKey,
+            kp.publicKey,
+            sig.replace("0x", ""),
+            [CONTRACT_ADDRESS],
+            user,
+            startTs,
+            days,
+          );
+          // Лог без JSON.stringify (или с безопасным сериализатором)
+          console.log("userDecrypt output:", out);
+          // Если нужен текстовый лог:
+          const safeStringify = (o) => JSON.stringify(o, (_, v) => (typeof v === "bigint" ? v.toString() : v));
+          log(`userDecrypt output: ${safeStringify(out)}`);
+
+          // Достаём значение. В SDK это либо строка, либо bigint.
+          let decrypted = out[feeHandle];
+          if (decrypted === undefined) {
+            // На всякий случай, если ключи отличаются регистром
+            const k = Object.keys(out).find((kk) => kk.toLowerCase() === feeHandle.toLowerCase());
+            decrypted = k ? out[k] : undefined;
+          }
+          if (decrypted === undefined) {
+            throw new Error("Decryption succeeded but handle not found in output");
+          }
+          const centsBig = typeof decrypted === "bigint" ? decrypted : BigInt(decrypted);
+          const dollarsStr = (centsBig / 100n).toString();
+          feeResult.textContent = `Fee: $${dollarsStr} (${centsBig.toString()} cents) 💰`;
+          log(`Decrypted fee (cents): ${centsBig.toString()}`);
+          status.textContent = "✅ Fee decrypted";
+          addSuccessFlash(feeResult);
+        } catch (e) {
+          status.textContent = `❌ Decryption error: ${e.message}`;
+          log(`Decryption error: ${e.message}`);
+          console.log(e);
+        } finally {
+          decryptFeeBtn.disabled = false;
+          removeLoadingAnimation(decryptFeeBtn);
+        }
+      };
+    </script>
+  </body>
+</html>
